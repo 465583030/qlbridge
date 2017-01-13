@@ -1,6 +1,6 @@
 // Mockcsv implements an in-memory csv data source for testing usage
 // implemented by wrapping the mem-b-tree.
-package mockcsv
+package mock
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	MockSchemaName = "mockcsv"
+	MockSchemaName = "mockdb"
 )
 
 var (
@@ -38,9 +38,9 @@ func init() {
 	MockSchema = datasource.RegisterSchemaSource(MockSchemaName, MockSchemaName, MockCsvGlobal)
 }
 
-// LoadTable MockCsv is used for mocking so has a global data source we can load data into
-func LoadTable(schemaName, name, csvRaw string) {
-	MockCsvGlobal.CreateTable(name, csvRaw)
+// LoadCsvTable MockCsv is used for mocking so has a global data source we can load data into
+func LoadCsvTable(schemaName, name, csvRaw string) {
+	MockCsvGlobal.CreateCsvTable(name, csvRaw)
 	MockSchema.RefreshSchema()
 }
 
@@ -142,10 +142,30 @@ func (m *MockCsvSource) loadTable(tableName string) error {
 
 func (m *MockCsvSource) Close() error     { return nil }
 func (m *MockCsvSource) Tables() []string { return m.tablenamelist }
-func (m *MockCsvSource) CreateTable(tableName, csvRaw string) {
+func (m *MockCsvSource) CreateCsvTable(tableName, csvRaw string) {
 	if _, exists := m.raw[tableName]; !exists {
 		m.tablenamelist = append(m.tablenamelist, tableName)
 	}
 	m.raw[tableName] = csvRaw
 	m.loadTable(tableName)
+}
+
+// CreateSparseTable accepts a table name (which must exist)
+func (m *MockCsvSource) CreateSparseTable(sourceTable, newTableName string, rowCt, colCt int) {
+	curDs, exists := m.tables[sourceTable]
+	if !exists {
+		panic(fmt.Sprintf("%q table must already exist", sourceTable))
+	}
+	ds := membtree.NewStaticData(newTableName)
+	u.Infof("%q current columns %v", sourceTable, curDs.Columns())
+	cols := curDs.Columns()
+	for i := 0; i < colCt; i++ {
+		cols = append(cols, fmt.Sprintf("col%d", i))
+	}
+	ds.SetColumns(cols)
+	m.tables[newTableName] = ds
+
+	for i := 0; i < rowCt; i++ {
+
+	}
 }
